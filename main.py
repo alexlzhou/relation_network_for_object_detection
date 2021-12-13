@@ -23,17 +23,21 @@ for d in random.sample(dataset_dicts, 1):
 	cv.waitKey()
 
 cfg = get_cfg()
+
 cfg.DATASETS.TRAIN = ("self_coco_train", )
 cfg.DATASETS.TEST = ("self_coco_val", )
 
 cfg.DATALOADER.NUM_WORKERS = 1
+
 cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-Detection/faster_rcnn_R_50_FPN_3x.yaml")
+
 cfg.SOLVER.IMS_PER_BATCH = 2
 cfg.SOLVER.BASE_LR = 0.0025
-cfg.SOLVER.MAX_ITER = 300
+cfg.SOLVER.MAX_ITER = 20000
+
 cfg.TEST.EVAL_PERIOD = 100
+
 cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 128
-cfg.MODEL.ROI_HEADS.NUM_CLASSES = 2
 
 os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
 trainer = DefaultTrainer(cfg)
