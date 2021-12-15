@@ -3,12 +3,21 @@ from detectron2.config import get_cfg
 from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.data.datasets import register_coco_instances
 from detectron2.engine import DefaultTrainer, DefaultPredictor
+from detectron2.evaluation import COCOEvaluator
 from detectron2.utils.visualizer import ColorMode, Visualizer
 
 import cv2 as cv
 import os
 import random
 
+
+class CocoTrainer(DefaultTrainer):
+	@classmethod
+	def build_evaluator(cls, cfg, dataset_name, output_folder=None):
+		if output_folder is None:
+			os.makedirs("coco_eval", exist_ok=True)
+			output_folder = "coco_eval"
+		return COCOEvaluator(dataset_name, cfg, False, output_folder)
 
 def train_val(train, val):
 	register_coco_instances("self_coco_train", {}, "/home/alex/Pictures/coco/annotations/instances_train2017.json", "/home/alex/Pictures/coco/train2017")
@@ -27,33 +36,30 @@ def train_val(train, val):
 	'''
 	
 	cfg = get_cfg()
-
-	cfg.DATASETS.TRAIN = ("self_coco_train", )
-	cfg.DATASETS.TEST = ("self_coco_val", )
-
-	cfg.DATALOADER.NUM_WORKERS = 1
-
+	cfg.merge_from_file(model_zoo.get_config_file("COCO-Detection/faster_rcnn_R_50_FPN_3x.yaml"))
 	cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-Detection/faster_rcnn_R_50_FPN_3x.yaml")
-
-	cfg.SOLVER.IMS_PER_BATCH = 2
-	cfg.SOLVER.BASE_LR = 0.0025
-	cfg.SOLVER.MAX_ITER = 20000
-
-	cfg.TEST.EVAL_PERIOD = 100
-
-	cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 128
-
+	
+	print(cfg.MODEL.META_ARCHITECTURE)
+	print(cfg.DATASETS.TRAIN)
+	
 	os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
-	trainer = DefaultTrainer(cfg)
-	trainer.resume_or_load(resume=False)
 	
 	if train:
+		cfg.DATASETS.TRAIN = ("self_coco_train", )
+		cfg.DATASETS.TEST = ("self_coco_val", )
+		cfg.DATALOADER.NUM_WORKERS = 1
+		cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 128
+		# cfg.SOLVER.BASE_LR = 0.0025
+		cfg.SOLVER.IMS_PER_BATCH = 2
+		cfg.SOLVER.MAX_ITER = 1000
+		cfg.TEST.EVAL_PERIOD = 100
+		
+		trainer = CocoTrainer(cfg)
+		trainer.resume_or_load(resume=False)
 		trainer.train()
-
-	print(coco_val_metadata)
 	
 	if val:
-		cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "model_final.pth")
+		# cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "model_final.pth")
 		cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.6
 		predictor = DefaultPredictor(cfg)
 
